@@ -1,0 +1,800 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HMD - Facturation</title>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eee;color:#111;font:15px Arial}
+header{background:#111;color:white;text-align:center;padding:16px}
+header h1{margin:5px 0;font-size:30px;letter-spacing:4px}
+header p{margin:5px;font-size:12px;color:#d4b46a}
+
+.logo{
+display:inline-flex;align-items:center;justify-content:center;
+width:65px;height:65px;border:2px solid #c6a45a;
+border-radius:15px;color:#d7b66b;font-size:27px;
+font-weight:bold;letter-spacing:-3px;
+box-shadow:0 0 12px #c6a45a44;
+}
+.logo span:nth-child(2){color:white}
+.logo span:nth-child(3){color:#d7b66b}
+
+nav{display:flex;overflow:auto;background:#ddd;gap:5px;
+padding:8px;position:sticky;top:0;z-index:5}
+button{padding:10px;border:1px solid #111;border-radius:4px;
+background:white;color:#111}
+nav button{white-space:nowrap}
+nav button.active,.primary{background:#111;color:white}
+
+main{max-width:950px;margin:auto;padding:10px}
+.panel{display:none;background:white;padding:13px;
+margin-bottom:12px;border:1px solid #aaa}
+.panel.active{display:block}
+h2{font-size:19px;border-bottom:2px solid;
+padding-bottom:8px}
+label{display:block;font-weight:bold;font-size:13px;margin:9px 0 4px}
+input,select,textarea{width:100%;padding:10px;
+border:1px solid #888;border-radius:4px;background:white;font-size:15px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card,.line{border:1px solid #aaa;padding:10px;margin:8px 0}
+.line{border-radius:5px}
+.actions{margin-top:8px}
+.actions button{margin:3px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12px}
+th,td{border:1px solid #444;padding:6px;text-align:left}
+th{background:#eee}
+.scroll{overflow-x:auto}
+.totals{max-width:400px;margin-left:auto}
+.totals div{display:flex;justify-content:space-between;
+gap:12px;padding:6px;border-bottom:1px solid #aaa}
+.total{font-weight:bold;font-size:18px;border-top:2px solid}
+.note{background:#eee;padding:9px;font-size:13px;margin:10px 0}
+
+/* FACTURE */
+.invoice{background:white;padding:18px;max-width:800px;
+margin:auto;color:#000;font-family:Arial,sans-serif}
+.invhead{display:grid;grid-template-columns:1.5fr 1fr;
+gap:16px;border-bottom:2px solid #111;padding-bottom:12px}
+.invbrand h1{font-size:25px;letter-spacing:3px;
+margin:0 0 5px;color:#a78235}
+.invbrand h2{font-size:16px;border:0;margin:0 0 6px;padding:0}
+.invbrand p{font-size:11px;line-height:1.4;margin:3px 0}
+.invids{font-size:10.5px;line-height:1.5;
+border-left:1px solid #999;padding-left:12px}
+.invids p{margin:2px 0;overflow-wrap:anywhere}
+.invtitle{text-align:center;font-size:19px;
+font-weight:bold;margin:17px 0}
+.invinfo{display:grid;grid-template-columns:1.4fr 1fr;
+gap:12px;font-size:11px;line-height:1.55;margin:12px 0}
+.infobox{border:1px solid #999;padding:9px;
+min-width:0;overflow-wrap:anywhere}
+.infobox h3{font-size:12px;margin:0 0 5px;
+border-bottom:1px solid #bbb;padding-bottom:4px}
+.clientdetails{display:grid;grid-template-columns:1fr 1fr;
+gap:2px 12px;margin-top:5px}
+.clientdetails span{overflow-wrap:anywhere}
+.invoice .totals{font-size:11px;max-width:330px}
+.invoice .totals div{padding:4px 6px}
+.invoice .total{font-size:14px}
+.amount-words{font-size:11px;line-height:1.5;margin-top:14px}
+.sign{display:flex;justify-content:space-between;
+margin-top:45px;font-size:11px}
+
+@media(max-width:560px){
+.row{grid-template-columns:1fr}
+.invoice{padding:9px}
+.invhead{grid-template-columns:1fr;gap:8px}
+.invids{border-left:0;border-top:1px solid #999;
+padding:7px 0 0;display:grid;grid-template-columns:1fr 1fr;
+column-gap:10px}
+.invinfo{grid-template-columns:1fr 1fr;gap:7px;font-size:10px}
+.clientdetails{grid-template-columns:1fr}
+table{font-size:10px}
+th,td{padding:4px}
+}
+@media print{
+body{background:white}
+header,nav,main>.panel:not(#preview),#preview>h2,.no-print{
+display:none!important}
+#preview{display:block!important;border:0;padding:0;margin:0}
+.invoice{max-width:none;border:0;padding:5mm}
+@page{size:A4;margin:10mm}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="logo">
+<span>H</span><span>M</span><span>D</span>
+</div>
+<h1>HMD</h1>
+<p>GESTION COMMERCIALE ET FACTURATION</p>
+</header>
+
+<nav>
+<button class="active" onclick="tab('facture',this)">Facture</button>
+<button onclick="tab('historique',this)">Historique</button>
+<button onclick="tab('clients',this)">Clients</button>
+<button onclick="tab('produits',this)">Produits</button>
+<button onclick="tab('sauvegarde',this)">Sauvegarde</button>
+</nav>
+
+<main>
+
+<!-- FACTURE -->
+
+<section id="facture" class="panel active">
+<h2>Nouvelle facture</h2>
+
+<div class="row">
+<div><label>Numéro</label><input id="numero"></div>
+<div><label>Date</label><input type="date" id="date"></div>
+</div>
+
+<label>Client</label>
+<select id="client"></select>
+
+<label>Mode de paiement</label>
+<select id="mode" onchange="calculer()">
+<option>Espèces</option>
+<option>Chèque</option>
+<option>Virement</option>
+<option>À terme</option>
+</select>
+
+<div class="note">
+Le droit de timbre est calculé automatiquement lorsque le règlement est effectué en espèces.
+</div>
+
+<h3>Articles</h3>
+<div id="lignes"></div>
+<button onclick="ajouterLigne()">+ Ajouter un article</button>
+
+<div class="totals">
+<div><span>Total HT</span><b id="ht">0,00 DA</b></div>
+<div id="detailsTva"></div>
+<div><span>Total TVA</span><b id="totalTva">0,00 DA</b></div>
+<div class="total"><span>Total TTC</span><b id="ttc">0,00 DA</b></div>
+<div><span>Droit de timbre</span><b id="timbre">0,00 DA</b></div>
+<div><span>Total TTC + timbre</span><b id="net">0,00 DA</b></div>
+</div>
+
+<label>Observation</label>
+<textarea id="observation"></textarea>
+
+<div class="actions">
+<button class="primary" onclick="enregistrerFacture()">Enregistrer la facture</button>
+<button onclick="apercu()">Aperçu de la facture</button>
+</div>
+</section>
+
+<!-- HISTORIQUE -->
+
+<section id="historique" class="panel">
+<h2>Historique des factures</h2>
+<div id="listeFactures"></div>
+</section>
+
+<!-- CLIENTS -->
+
+<section id="clients" class="panel">
+<h2>Gestion des clients</h2>
+
+<input type="hidden" id="clientEdit">
+
+<label>Nom / Raison sociale</label>
+<input id="cNom">
+
+<label>Adresse</label>
+<input id="cAdresse">
+
+<label>Activité du client</label>
+<input id="cActivite" placeholder="Ex: Commerce de gros, Alimentation générale...">
+
+<div class="row">
+<div><label>RC</label><input id="cRC"></div>
+<div><label>NIF</label><input id="cNIF"></div>
+<div><label>NIS</label><input id="cNIS"></div>
+<div><label>ART</label><input id="cART"></div>
+</div>
+
+<button class="primary" onclick="sauverClient()">Enregistrer client</button>
+
+<div id="listeClients"></div>
+</section>
+
+<!-- PRODUITS -->
+
+<section id="produits" class="panel">
+<h2>Catalogue des produits</h2>
+
+<input type="hidden" id="produitEdit">
+
+<label>Désignation</label>
+<input id="pNom">
+
+<label>Prix unitaire HT (DA)</label>
+<input type="number" id="pPrix">
+
+<label>TVA</label>
+<select id="pTva">
+<option value="EXO">Exonéré</option>
+<option value="0">0%</option>
+<option value="9">9%</option>
+<option value="19">19%</option>
+</select>
+
+<button class="primary" onclick="sauverProduit()">Enregistrer produit</button>
+<div id="listeProduits"></div>
+</section>
+
+<!-- SAUVEGARDE -->
+
+<section id="sauvegarde" class="panel">
+<h2>Sauvegarde des données</h2>
+<p>احتفظ بنسخة احتياطية من العملاء والمنتجات والفواتير.</p>
+
+<button class="primary" onclick="exporter()">Exporter la sauvegarde</button>
+
+<label>Restaurer une sauvegarde</label>
+<input type="file" id="fichier" accept=".json">
+
+<p class="note">استرجاع نسخة احتياطية يعوّض البيانات الحالية. صدّر نسخة قبل الاسترجاع.</p>
+</section>
+
+<!-- APERCU -->
+
+<section id="preview" class="panel">
+<h2>Aperçu</h2>
+<div class="no-print">
+<button class="primary" onclick="window.print()">Imprimer / PDF</button>
+<button onclick="tab('facture')">Retour</button>
+</div>
+<div id="contenuFacture"></div>
+</section>
+
+</main>
+
+<script>
+const K={
+clients:'hamidiCustomers',
+produits:'hamidiProducts',
+factures:'hamidiInvoices'
+};
+
+function lire(k){
+try{return JSON.parse(localStorage.getItem(k)||'[]')}
+catch(e){return []}
+}
+
+let clients=lire(K.clients);
+let produits=lire(K.produits);
+let factures=lire(K.factures);
+let lignes=[];
+
+const $=id=>document.getElementById(id);
+
+function sauvegarder(){
+localStorage.setItem(K.clients,JSON.stringify(clients));
+localStorage.setItem(K.produits,JSON.stringify(produits));
+localStorage.setItem(K.factures,JSON.stringify(factures));
+}
+
+function montant(n){
+return (Number(n)||0).toLocaleString('fr-FR',{
+minimumFractionDigits:2,
+maximumFractionDigits:2
+})+' DA';
+}
+
+function safe(s){
+return String(s??'').replace(/[&<>"']/g,c=>({
+'&':'&amp;','<':'&lt;','>':'&gt;',
+'"':'&quot;',"'":'&#39;'
+}[c]));
+}
+
+function tab(id,btn){
+document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+$(id).classList.add('active');
+document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+if(btn)btn.classList.add('active');
+}
+
+function actualiserClients(){
+$('client').innerHTML='<option value="">-- Choisir un client --</option>'+
+clients.map((c,i)=>`<option value="${i}">${safe(c.nom)}</option>`).join('');
+
+$('listeClients').innerHTML=clients.map((c,i)=>`
+<div class="card">
+<b>${safe(c.nom)}</b><br>
+${safe(c.adresse)}<br>
+<b>Activité:</b> ${safe(c.activite||'—')}<br>
+RC: ${safe(c.rc)} | NIF: ${safe(c.nif)} |
+NIS: ${safe(c.nis)} | ART: ${safe(c.art)}
+<div class="actions">
+<button onclick="modifierClient(${i})">Modifier</button>
+<button onclick="supprimerClient(${i})">Supprimer</button>
+</div>
+</div>`).join('');
+}
+
+function sauverClient(){
+let c={
+nom:$('cNom').value.trim(),
+adresse:$('cAdresse').value,
+activite:$('cActivite').value.trim(),
+rc:$('cRC').value,
+nif:$('cNIF').value,
+nis:$('cNIS').value,
+art:$('cART').value
+};
+
+if(!c.nom)return alert('Saisissez le nom du client.');
+
+let i=$('clientEdit').value;
+if(i==='')clients.push(c);
+else clients[Number(i)]=c;
+
+$('clientEdit').value='';
+['cNom','cAdresse','cActivite','cRC','cNIF','cNIS','cART'].forEach(x=>$(x).value='');
+
+sauvegarder();
+actualiserClients();
+alert('Client enregistré.');
+}
+
+function modifierClient(i){
+let c=clients[i];
+$('clientEdit').value=i;
+$('cNom').value=c.nom;
+$('cAdresse').value=c.adresse||'';
+$('cActivite').value=c.activite||'';
+$('cRC').value=c.rc||'';
+$('cNIF').value=c.nif||'';
+$('cNIS').value=c.nis||'';
+$('cART').value=c.art||'';
+tab('clients');
+}
+
+function supprimerClient(i){
+if(confirm('Supprimer ce client ?')){
+clients.splice(i,1);
+sauvegarder();
+actualiserClients();
+}
+}
+
+function actualiserProduits(){
+$('listeProduits').innerHTML=produits.map((p,i)=>`
+<div class="card">
+<b>${safe(p.nom)}</b><br>
+Prix HT: ${montant(p.prix)} — TVA: ${p.tva==='EXO'?'Exonéré':p.tva+'%'}
+<div class="actions">
+<button onclick="modifierProduit(${i})">Modifier</button>
+<button onclick="supprimerProduit(${i})">Supprimer</button>
+</div>
+</div>`).join('');
+}
+
+function sauverProduit(){
+let p={
+nom:$('pNom').value.trim(),
+prix:Number($('pPrix').value),
+tva:$('pTva').value
+};
+
+if(!p.nom||p.prix<0||!Number.isFinite(p.prix))
+return alert('Vérifiez le produit et son prix.');
+
+let i=$('produitEdit').value;
+if(i==='')produits.push(p);
+else produits[Number(i)]=p;
+
+$('produitEdit').value='';
+$('pNom').value='';
+$('pPrix').value='';
+$('pTva').value='EXO';
+
+sauvegarder();
+actualiserProduits();
+afficherLignes();
+alert('Produit enregistré.');
+}
+
+function modifierProduit(i){
+let p=produits[i];
+$('produitEdit').value=i;
+$('pNom').value=p.nom;
+$('pPrix').value=p.prix;
+$('pTva').value=p.tva;
+tab('produits');
+}
+
+function supprimerProduit(i){
+if(confirm('Supprimer ce produit ?')){
+produits.splice(i,1);
+sauvegarder();
+actualiserProduits();
+afficherLignes();
+}
+}
+
+function ajouterLigne(){
+lignes.push({nom:'',qte:1,prix:0,tva:'EXO'});
+afficherLignes();
+}
+
+function afficherLignes(){
+$('lignes').innerHTML=lignes.map((l,i)=>`
+<div class="line">
+<label>Produit</label>
+<select onchange="choisirProduit(${i},this.value)">
+<option value="">-- Choisir --</option>
+${produits.map((p,j)=>`<option value="${j}">${safe(p.nom)}</option>`).join('')}
+</select>
+
+<div class="row">
+<div>
+<label>Désignation</label>
+<input value="${safe(l.nom)}" onchange="changer(${i},'nom',this.value)">
+</div>
+
+<div>
+<label>Quantité</label>
+<input type="number" min="0" value="${l.qte}" onchange="changer(${i},'qte',this.value)">
+</div>
+
+<div>
+<label>Prix HT</label>
+<input type="number" min="0" value="${l.prix}" onchange="changer(${i},'prix',this.value)">
+</div>
+
+<div>
+<label>TVA</label>
+<select onchange="changer(${i},'tva',this.value)">
+<option value="EXO" ${l.tva==='EXO'?'selected':''}>Exonéré</option>
+<option value="0" ${l.tva==='0'?'selected':''}>0%</option>
+<option value="9" ${l.tva==='9'?'selected':''}>9%</option>
+<option value="19" ${l.tva==='19'?'selected':''}>19%</option>
+</select>
+</div>
+</div>
+
+<button onclick="retirerLigne(${i})">Supprimer la ligne</button>
+</div>`).join('');
+
+calculer();
+}
+
+function choisirProduit(i,j){
+if(j==='')return;
+let p=produits[Number(j)];
+lignes[i]={...lignes[i],nom:p.nom,prix:p.prix,tva:p.tva};
+afficherLignes();
+}
+
+function changer(i,k,v){
+lignes[i][k]=v;
+calculer();
+}
+
+function retirerLigne(i){
+lignes.splice(i,1);
+afficherLignes();
+}
+
+function totaux(){
+let ht=0,vat={0:0,9:0,19:0};
+let utilise={0:false,9:false,19:false};
+
+lignes.forEach(l=>{
+let base=(Number(l.qte)||0)*(Number(l.prix)||0);
+ht+=base;
+
+if(l.tva!=='EXO'){
+let r=Number(l.tva)||0;
+if([0,9,19].includes(r)){
+vat[r]+=base*r/100;
+utilise[r]=true;
+}
+}
+});
+
+let totalTVA=vat[0]+vat[9]+vat[19];
+
+return {ht,vat,utilise,totalTVA,ttc:ht+totalTVA};
+}
+
+function droitTimbre(a){
+a=Number(a)||0;
+if(a<=300)return 0;
+let taux=a<=30000?1:a<=100000?1.5:2;
+return Math.max(5,Math.ceil(a/100)*taux);
+}
+
+function calculer(){
+let t=totaux();
+let timbre=$('mode').value==='Espèces'?droitTimbre(t.ttc):0;
+
+$('ht').textContent=montant(t.ht);
+
+$('detailsTva').innerHTML=[0,9,19]
+.filter(r=>t.utilise[r])
+.map(r=>`<div><span>TVA ${r}%</span><b>${montant(t.vat[r])}</b></div>`)
+.join('');
+
+$('totalTva').textContent=montant(t.totalTVA);
+$('ttc').textContent=montant(t.ttc);
+$('timbre').textContent=montant(timbre);
+$('net').textContent=montant(t.ttc+timbre);
+}
+
+function factureActuelle(){
+let t=totaux();
+let mode=$('mode').value;
+
+return {
+numero:$('numero').value,
+date:$('date').value,
+client:clients[Number($('client').value)]||{nom:'Client'},
+lignes:lignes.map(x=>({...x})),
+mode:mode,
+timbre:mode==='Espèces'?droitTimbre(t.ttc):0,
+totaux:t,
+observation:$('observation').value
+};
+}
+
+function enregistrerFacture(){
+let f=factureActuelle();
+
+if(!f.lignes.length)return alert('Ajoutez un article.');
+if(!f.numero)f.numero='HMD-'+Date.now();
+
+if(factures.some(x=>x.numero===f.numero))
+return alert('Ce numéro existe déjà.');
+
+factures.unshift(f);
+sauvegarder();
+afficherHistorique();
+alert('Facture enregistrée.');
+}
+
+function afficherHistorique(){
+$('listeFactures').innerHTML=factures.map((f,i)=>`
+<div class="card">
+<b>Facture ${safe(f.numero)}</b><br>
+${safe(f.date)} — ${safe(f.client?.nom)}<br>
+Total TTC: ${montant(f.totaux?.ttc||0)}
+<div class="actions">
+<button onclick="voirFacture(${i})">Voir / Imprimer</button>
+<button onclick="supprimerFacture(${i})">Supprimer</button>
+</div>
+</div>`).join('');
+}
+
+function supprimerFacture(i){
+if(confirm('Supprimer cette facture ?')){
+factures.splice(i,1);
+sauvegarder();
+afficherHistorique();
+}
+}
+
+function enLettres(n){
+n=Math.floor(Math.abs(Number(n)||0));
+if(n===0)return 'zéro';
+
+let u=['','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize'];
+
+function d(x){
+if(x<17)return u[x];
+if(x<20)return 'dix-'+u[x-10];
+
+let dizaines=['','','vingt','trente','quarante','cinquante','soixante','','quatre-vingt'];
+let a=Math.floor(x/10),b=x%10;
+
+if(a===7)return 'soixante-'+(b?d(10+b):'dix');
+if(a===9)return 'quatre-vingt-'+(b?d(10+b):'dix');
+
+return dizaines[a]+(b===0?(a===8?'s':''):b===1&&a<8?' et un':'-'+u[b]);
+}
+
+function c(x){
+if(x<100)return d(x);
+let h=Math.floor(x/100),r=x%100;
+return (h===1?'cent':u[h]+' cent')+(r?' '+d(r):h>1?'s':'');
+}
+
+let parts=[];
+let m=Math.floor(n/1000000);n%=1000000;
+let k=Math.floor(n/1000);n%=1000;
+
+if(m)parts.push((m===1?'un':c(m))+' million'+(m>1?'s':''));
+if(k)parts.push(k===1?'mille':c(k)+' mille');
+if(n)parts.push(c(n));
+
+return parts.join(' ');
+}
+
+function htmlFacture(f){
+let c=f.client||{};
+let t=f.totaux||{
+ht:0,vat:{0:0,9:0,19:0},
+utilise:{0:false,9:false,19:false},
+totalTVA:0,ttc:0
+};
+
+let rows=f.lignes.map(l=>{
+let base=(Number(l.qte)||0)*(Number(l.prix)||0);
+let v=l.tva==='EXO'?0:base*(Number(l.tva)||0)/100;
+
+return `<tr>
+<td>${safe(l.nom)}</td>
+<td>${l.qte}</td>
+<td>${montant(l.prix)}</td>
+<td>${l.tva==='EXO'?'Exonéré':l.tva+'%'}</td>
+<td>${montant(base)}</td>
+<td>${montant(v)}</td>
+<td>${montant(base+v)}</td>
+</tr>`;
+}).join('');
+
+let utilise=t.utilise||{0:false,9:false,19:false};
+
+let tvaRows=[0,9,19]
+.filter(r=>utilise[r])
+.map(r=>`<div><span>TVA ${r}%</span><b>${montant(t.vat[r])}</b></div>`)
+.join('');
+
+return `<div class="invoice">
+
+<div class="invhead">
+
+<div class="invbrand">
+<h1>HMD</h1>
+<h2>HAMIDI LOTFI</h2>
+<p>Vente en gros de légumes secs et produits minoterie</p>
+<p>Oulad si Ahmed Bourached - Aïn Defla</p>
+</div>
+
+<div class="invids">
+<p><b>RC :</b> 44/00-3848565A14</p>
+<p><b>NIF :</b> 198344010072628</p>
+<p><b>NIS :</b> 198344010072628</p>
+<p><b>ART :</b> 44070339613</p>
+</div>
+
+</div>
+
+<div class="invtitle">FACTURE N° ${safe(f.numero)}</div>
+
+<div class="invinfo">
+
+<div class="infobox">
+<h3>INFORMATIONS CLIENT</h3>
+<b>${safe(c.nom||'')}</b><br>
+${safe(c.adresse||'')}
+
+<div class="clientdetails">
+<span><b>Activité :</b> ${safe(c.activite||'—')}</span>
+<span><b>RC :</b> ${safe(c.rc||'—')}</span>
+<span><b>NIF :</b> ${safe(c.nif||'—')}</span>
+<span><b>NIS :</b> ${safe(c.nis||'—')}</span>
+<span><b>ART :</b> ${safe(c.art||'—')}</span>
+</div>
+</div>
+
+<div class="infobox">
+<h3>INFORMATIONS FACTURE</h3>
+<b>Date :</b> ${safe(f.date||'')}<br>
+<b>Règlement :</b> ${safe(f.mode||'')}
+</div>
+
+</div>
+
+<div class="scroll">
+<table>
+<thead>
+<tr>
+<th>Désignation</th>
+<th>Qté</th>
+<th>Prix HT</th>
+<th>TVA</th>
+<th>Total HT</th>
+<th>TVA DA</th>
+<th>Total TTC</th>
+</tr>
+</thead>
+<tbody>${rows}</tbody>
+</table>
+</div>
+
+<div class="totals">
+<div><span>Total HT</span><b>${montant(t.ht)}</b></div>
+${tvaRows}
+<div><span>Total TVA</span><b>${montant(t.totalTVA)}</b></div>
+<div class="total"><span>Total TTC</span><b>${montant(t.ttc)}</b></div>
+
+${f.timbre?`
+<div><span>Droit de timbre</span><b>${montant(f.timbre)}</b></div>
+<div><span>Total à payer</span><b>${montant(t.ttc+f.timbre)}</b></div>
+`:''}
+</div>
+
+<p class="amount-words">
+<b>Arrêtée la présente facture à la somme de :</b><br>
+${enLettres(t.ttc)} dinars algériens.
+</p>
+
+${f.observation?`<p><b>Observation :</b> ${safe(f.observation)}</p>`:''}
+
+<div class="sign">
+<span>Signature et cachet</span>
+<span>Le client</span>
+</div>
+
+</div>`;
+}
+
+function apercu(){
+$('contenuFacture').innerHTML=htmlFacture(factureActuelle());
+tab('preview');
+}
+
+function voirFacture(i){
+$('contenuFacture').innerHTML=htmlFacture(factures[i]);
+tab('preview');
+}
+
+function exporter(){
+let data={clients,produits,factures};
+let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+let url=URL.createObjectURL(blob);
+let a=document.createElement('a');
+a.href=url;
+a.download='HMD-sauvegarde.json';
+a.click();
+URL.revokeObjectURL(url);
+}
+
+$('fichier').onchange=async function(){
+let file=this.files[0];
+if(!file)return;
+
+try{
+let d=JSON.parse(await file.text());
+
+if(!Array.isArray(d.clients)||
+!Array.isArray(d.produits)||
+!Array.isArray(d.factures))
+throw Error();
+
+if(!confirm('Remplacer les données actuelles ?'))return;
+
+clients=d.clients;
+produits=d.produits;
+factures=d.factures;
+
+sauvegarder();
+actualiserClients();
+actualiserProduits();
+afficherHistorique();
+
+alert('Sauvegarde restaurée.');
+}catch(e){
+alert('Fichier invalide.');
+}
+this.value='';
+};
+
+function init(){
+let d=new Date();
+$('date').v
